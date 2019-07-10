@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="style.css">
+  <title>CS380 Glyph Gen</title>
+</head>
+<body>
+  <div class="jumbotron bg-transparent">
+    <h1>Alphabet Glyph Generator</h1>
+    <p>William Yoong, Jacob Lim, Malody Hoe</p>
+  </div>
+  <div class="container-fluid">
+    <div class="row">
+
+      <!-- Glyphs -->
+      <div class="col-md-8 col-12">
+        <div class="row">
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+          <div class="col glyph">
+            <canvas></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parameters (see bootstrap forms) -->
+      <div class="col-md-4 col-12" id="params-sidebar">
+        <h3>Parameters</h3>
+        <div class="form-group">
+          <label for="seed-input">Seed</label>
+          <input type="text" class="form-control" id="seed-input">
+        </div>
+        <div class="form-group">
+          <label for="line-width">Line Width</label>
+          <input type="range" class="form-control-range" id="line-width" min="1" max="16" value="4">
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.1/seedrandom.min.js" integrity="sha384-hqVlsBbYhb+7Gg9S9ygfTPFCNc1rwL56/bduXVqV0lZSz0P2eGZhP+0ZJm/+yh1C" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+  <script src="script.js"></script>
+</body>
+</html>
