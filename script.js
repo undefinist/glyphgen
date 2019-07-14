@@ -1,11 +1,16 @@
-const GLYPH_SIZE = 256;
+const GLYPH_SIZE       = 256;
+const LINES_SIZE       = 4.0;
+const CURVES_SIZE      = 6.0;
+const LINE_WIDTH_SIZE  = 10.0;
+const LINE_LENGTH_SIZE = 256.0;
 
 var settings = {
     seed: "",
-    lineWidth: 4,
-    lineLength: 128,
+    lineWidth: 10,
+    lineLength: 10,
     angle: 180,
     curves: 1,
+    lines: 1
 };
 
 var lasPosX = 0;
@@ -36,6 +41,10 @@ $("#circle-arc-angle").on("input", function(e) {
 });
 $("#curves-input").on("input", function(e) {
     settings.curves = $(this).val();
+    gen();
+});
+$("#lines-input").on("input", function (e) {
+    settings.lines = $(this).val();
     gen();
 });
 
@@ -70,8 +79,8 @@ function genGlyph(ctx)
 
     // change input to take in degrees from 0-180, thus we have to convert back to radians
     let rad = settings.angle * Math.PI / 180;
-    
-    for(var i = 0; i < settings.curves; ++i) {
+    let numCurves = CURVES_SIZE * settings.curves / 100.0;
+    for (var i = 0; i < numCurves; ++i) {
         let x0 = randInt(16, GLYPH_SIZE - 16);
         let y0 = randInt(16, GLYPH_SIZE - 16);
         //Save last known position
@@ -88,18 +97,25 @@ function genGlyphLines(ctx)
 {
     ctx.beginPath();
     //Use last known position to connect the line and arcs
+  let numLines = LINES_SIZE * settings.lines / 100.0;
+    //Implement something to let user decide how many lines?
+  for (var i = 0; i < numLines; ++i)
+  {
     let x0 = lasPosX;//randInt(16, GLYPH_SIZE - 16);
     let y0 = lasPosY;//randInt(16, GLYPH_SIZE - 16);
-    //Implement something to let user decide how many lines?
     // move to a random coordinate on the box
     ctx.moveTo(x0, y0);
     //Get a random direction
     let ranRadY = Math.sin(randFloat(0.0, Math.PI));
     let ranRadX = Math.cos(randFloat(0.0, Math.PI));
+    let mag = settings.lineLength * LINE_LENGTH_SIZE / 100.0;
+    lasPosX = clamp(x0 + ranRadX * mag, 0, GLYPH_SIZE);
+    lasPosY = clamp(y0 + ranRadY * mag, 0, GLYPH_SIZE);
     // draw a line from moveTo to another random point
     //ctx.lineTo(randInt(x0+ 16, GLYPH_SIZE - 16), randInt(16 + y0, GLYPH_SIZE - 16));
     //Draw line to <x0, y0> + <ranRadX, ranRadY> * lineLength
-    ctx.lineTo(clamp(x0 + ranRadX * settings.lineLength, 0, GLYPH_SIZE), clamp(y0 + ranRadY * settings.lineLength, 0, GLYPH_SIZE));
+    ctx.lineTo(lasPosX, lasPosY);
+  }
     ctx.closePath();
     ctx.stroke();
 }
@@ -139,7 +155,7 @@ function gen()
         let ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineCap = "round";
-        ctx.lineWidth = settings.lineWidth;
+        ctx.lineWidth = settings.lineWidth * LINE_WIDTH_SIZE / 100.0;
         genGlyph(ctx);
         genGlyphLines(ctx);
         //genGlyphBezierCurve(ctx);
