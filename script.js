@@ -2,7 +2,8 @@ const GLYPH_SIZE = 256;
 
 var settings = {
     seed: "",
-    lineWidth: 4
+    lineWidth: 4,
+    angle: 180
 };
 
 // init canvas widths and heights (easier to do from here)
@@ -18,6 +19,10 @@ $("#seed-input").on("input", function(e) {
 });
 $("#line-width").on("input", function(e) {
     settings.lineWidth = $(this).val();
+    gen();
+});
+$("#circle-arc-angle").on("input", function(e) {
+    settings.angle = $(this).val();
     gen();
 });
 
@@ -37,7 +42,56 @@ function genGlyph(ctx)
 
     let x0 = randInt(16, GLYPH_SIZE - 16);
     let y0 = randInt(16, GLYPH_SIZE - 16);
-    ctx.arc(x0, y0, randInt(4, 32), randFloat(0, Math.PI * 2), randFloat(0, Math.PI));
+    
+    // change input to take in degrees from 0-180, thus we have to convert back to radians
+    let rad = settings.angle * Math.PI / 180;
+    ctx.arc(x0, y0, randInt(4, 32), randFloat(0, rad * 2), randFloat(0, rad));   
+    ctx.stroke();
+}
+
+// for drawing lines
+//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_shapes
+function genGlyphLines(ctx)
+{
+    ctx.beginPath();
+    
+    let x0 = randInt(16, GLYPH_SIZE - 16);
+    let y0 = randInt(16, GLYPH_SIZE - 16);
+    
+    // move to a random coordinate on the box
+    ctx.moveTo(x0, y0);
+    
+    // draw a line from moveTo to another random point
+    ctx.lineTo(randInt(x0+ 16, GLYPH_SIZE - 16), randInt(16 + y0, GLYPH_SIZE - 16));
+    ctx.closePath();
+    ctx.stroke();
+}
+
+function genGlyphBezierCurve(ctx)
+{
+    ctx.beginPath();
+    
+    // move to a random coordinate on the box
+    let x0 = randInt(16, GLYPH_SIZE - 16);
+    let y0 = randInt(16, GLYPH_SIZE - 16);
+    ctx.moveTo(x0, y0);
+    
+    // end point
+    let x_end = randInt(10, GLYPH_SIZE - 10);
+    let y_end = randInt(10, GLYPH_SIZE - 10);
+    
+    //control point 1
+    let cp1x = randInt(x0 - 10, x0 + 10);
+    let cp1y = y0;
+    
+    //control point 2
+    let cp2x = randInt(x_end - 10, x_end + 10);
+    let cp2y = randInt(y_end - 10, y_end + 10);
+    
+    //========================================
+    // LOOKS WRONG SO NEED TO MODIFY IF WE WANT TO USE
+    //========================================
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x0, y0);
     ctx.stroke();
 }
 
@@ -50,7 +104,30 @@ function gen()
         ctx.lineCap = "round";
         ctx.lineWidth = settings.lineWidth;
         genGlyph(ctx);
+        genGlyphLines(ctx);
+        //genGlyphBezierCurve(ctx);
     }
 }
 
 gen();
+
+// var permArr = [],
+  // usedChars = [];
+
+// function permute(input) {
+  // var i, ch;
+  // for (i = 0; i < input.length; i++) {
+    // ch = input.splice(i, 1)[0];
+    // usedChars.push(ch);
+    // if (input.length == 0) {
+      // permArr.push(usedChars.slice());
+    // }
+    // permute(input);
+    // input.splice(i, 0, ch);
+    // usedChars.pop();
+  // }
+  // return permArr
+// };
+
+
+// document.write(JSON.stringify(permute([1, 2, 3])));
