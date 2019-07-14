@@ -3,7 +3,8 @@ const GLYPH_SIZE = 256;
 var settings = {
     seed: "",
     lineWidth: 4,
-    angle: 180
+    angle: 180,
+    curves: 1
 };
 
 // init canvas widths and heights (easier to do from here)
@@ -25,6 +26,10 @@ $("#circle-arc-angle").on("input", function(e) {
     settings.angle = $(this).val();
     gen();
 });
+$("#curves-input").on("input", function(e) {
+    settings.curves = $(this).val();
+    gen();
+});
 
 function randFloat(min, max)
 {
@@ -35,17 +40,31 @@ function randInt(min, max)
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+
+// function genGlyph(ctx)
+// {
+    // ctx.beginPath();
+
+    // let x0 = randInt(16, GLYPH_SIZE - 16);
+    // let y0 = randInt(16, GLYPH_SIZE - 16);
+    // ctx.arc(x0, y0, randInt(4, 32), randFloat(0, Math.PI * 2), randFloat(0, Math.PI));
+    // ctx.stroke();
+// }
+
+
 // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
 function genGlyph(ctx)
 {
     ctx.beginPath();
-
-    let x0 = randInt(16, GLYPH_SIZE - 16);
-    let y0 = randInt(16, GLYPH_SIZE - 16);
-    
+   
     // change input to take in degrees from 0-180, thus we have to convert back to radians
     let rad = settings.angle * Math.PI / 180;
-    ctx.arc(x0, y0, randInt(4, 32), randFloat(0, rad * 2), randFloat(0, rad));   
+    
+    for(var i = 0; i < settings.curves; ++i) {
+        let x0 = randInt(16, GLYPH_SIZE - 16);
+        let y0 = randInt(16, GLYPH_SIZE - 16);
+        ctx.arc(x0, y0, randInt(4, 32), randFloat(0, rad * 2), randFloat(0, rad));   
+    }  
     ctx.stroke();
 }
 
@@ -104,7 +123,7 @@ function gen()
         ctx.lineCap = "round";
         ctx.lineWidth = settings.lineWidth;
         genGlyph(ctx);
-        genGlyphLines(ctx);
+        //genGlyphLines(ctx);
         //genGlyphBezierCurve(ctx);
     }
 }
