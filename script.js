@@ -179,13 +179,26 @@ function genGlyph(ctx)
 
     while(points.length > 1)
     {
-        let used = 0;
-        if(points.length > 3)
-            used = strokes.bezier(ctx, points);
-        else
-            used = strokes.line(ctx, points);
-        while(--used)
-            points.shift();
+        let keys = Object.keys(strokes);
+        let index = randInt(0, keys.length - 1);
+        let i = 0;
+        let counter = 0;
+        while(true)
+        {
+            let stroke = strokes[keys[i % keys.length]];
+            if(points.length >= stroke.points)
+            {
+                if(counter == index)
+                {
+                    stroke.draw(ctx, points);
+                    for(let j = 1; j < stroke.points; ++j)
+                        points.shift();
+                    break;
+                }
+                ++counter;
+            }
+            ++i;
+        }
     }
 
 
