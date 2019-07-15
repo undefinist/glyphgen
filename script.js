@@ -85,7 +85,7 @@ function gaussRand()
     var r = hold + seed;
     sum += r * (1.0 / 0x7FFFFFFF);
   }
-  // Returns [-1.0,1.0] (66.7%–95.8%–100%)
+  // Returns [-1.0,1.0] (66.7%ï¿½95.8%ï¿½100%)
   return sum / 3;
 }
 // function genGlyph(ctx)
@@ -268,13 +268,8 @@ function gen()
         ctx.lineCap = "round";
         ctx.lineWidth = settings.lineWidth * LINE_WIDTH_SIZE / 100.0;
         genGlyph(ctx);
-<<<<<<< HEAD
         // genGlyphLines(ctx);
         // genGlyphBezierCurve(ctx);
-=======
-        genGlyphLines(ctx);
-        genGlyphQuadraticCurve(ctx);
->>>>>>> fe1f69fb499c058063fba208947e2d80777e17e7
     }
 }
 
