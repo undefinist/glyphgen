@@ -323,6 +323,26 @@ function genGlyph(ctx)
         part[i].draw(ctx);
     }
 
+    // let ending_stroke = randInt(0, 3);
+    
+    // if(ending_stroke == 0)
+    // {    
+        // genGlyphLines(ctx, last_point.x, last_point.y);
+    // }
+    // else if(ending_stroke == 1)
+    // {   
+        // genGlyphQuadraticCurve(ctx, last_point.x, last_point.y);
+    // }
+    // else if(ending_stroke == 2)
+    // {
+       // genGlyphLines(ctx, last_point.x, last_point.y);
+       // genGlyphQuadraticCurve(ctx, last_point.x, last_point.y);
+    // }
+    // else
+    // {
+       // genGlyphQuadraticCurve(ctx, last_point.x, last_point.y);
+       // genGlyphLines(ctx, last_point.x, last_point.y);       
+    // }
 
     // ctx.beginPath();
 
@@ -342,7 +362,7 @@ function genGlyph(ctx)
 
 // for drawing lines
 //https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_shapes
-function genGlyphLines(ctx)
+function genGlyphLines(ctx, x0, y0)
 {
     ctx.beginPath();
     //Use last known position to connect the line and arcs
@@ -350,8 +370,8 @@ function genGlyphLines(ctx)
       //Implement something to let user decide how many lines?
     for (var i = 0; i < numLines; ++i)
     {
-        let x0 = lasPosX;//randInt(16, GLYPH_SIZE - 16);
-        let y0 = lasPosY;//randInt(16, GLYPH_SIZE - 16);
+        //let x0 = lasPosX;//randInt(16, GLYPH_SIZE - 16);
+        //let y0 = lasPosY;//randInt(16, GLYPH_SIZE - 16);
         // move to a random coordinate on the box
         ctx.moveTo(x0, y0);
         //Get a random direction
@@ -369,13 +389,13 @@ function genGlyphLines(ctx)
     ctx.stroke();
 }
 
-function genGlyphQuadraticCurve(ctx)
+function genGlyphQuadraticCurve(ctx, x0, y0)
 {
     ctx.beginPath();
     
     // move to a random coordinate on the box
-    let x0 = randInt(16, GLYPH_SIZE - 16);
-    let y0 = randInt(16, GLYPH_SIZE - 16);
+    //let x0 = randInt(16, GLYPH_SIZE - 16);
+    //let y0 = randInt(16, GLYPH_SIZE - 16);
     ctx.moveTo(x0, y0);
     
     // end point
