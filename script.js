@@ -19,6 +19,7 @@ var settings = {
 
 var lasPosX = 0;
 var lasPosY = 0;
+var seed = 61829450;
 
 // init canvas widths and heights (easier to do from here)
 // this sizes are separate from the actual widths and heights in the browser
@@ -72,7 +73,21 @@ function clamp(value, min, max)
 {
     return value < min ? min : (value > max ? max : value);
 }
-
+function gaussRand()
+{
+  var sum = 0;
+  for (var i = 0; i < 3; i++) {
+    // Uses an xorshift PRNG
+    var hold = seed;
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    var r = hold + seed;
+    sum += r * (1.0 / 0x7FFFFFFF);
+  }
+  // Returns [-1.0,1.0] (66.7%–95.8%–100%)
+  return sum / 3;
+}
 // function genGlyph(ctx)
 // {
     // ctx.beginPath();
