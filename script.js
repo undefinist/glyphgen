@@ -19,7 +19,7 @@ var settings = {
 
 var lasPosX = 0;
 var lasPosY = 0;
-var seed = 61829450;
+var gaussRandSeed = 0;
 
 // init canvas widths and heights (easier to do from here)
 // this sizes are separate from the actual widths and heights in the browser
@@ -37,8 +37,8 @@ $("#line-width").on("input", function(e) {
     gen();
 });
 $("#line-length").on("input", function (e) {
-  settings.lineLength = $(this).val();
-  gen();
+    settings.lineLength = $(this).val();
+    gen();
 });
 $("#circle-arc-angle").on("input", function(e) {
     settings.angle = $(this).val();
@@ -69,24 +69,20 @@ function randInt(min, max) // [min, max]
 {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+function randPoint()
+{
+    return new Point(randInt(0, GLYPH_SIZE), randInt(0, GLYPH_SIZE));
+}
 function clamp(value, min, max)
 {
     return value < min ? min : (value > max ? max : value);
 }
 function gaussRand()
 {
-  var sum = 0;
-  for (var i = 0; i < 3; i++) {
-    // Uses an xorshift PRNG
-    var hold = seed;
-    seed ^= seed << 13;
-    seed ^= seed >> 17;
-    seed ^= seed << 5;
-    var r = hold + seed;
-    sum += r * (1.0 / 0x7FFFFFFF);
-  }
-  // Returns [-1.0,1.0] (66.7%�95.8%�100%)
-  return sum / 3;
+    var u = 0, v = 0;
+    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+    while(v === 0) v = Math.random();
+    return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v ) / 3;
 }
 // function genGlyph(ctx)
 // {
@@ -99,108 +95,233 @@ function gaussRand()
 // }
 
 
-const Direction = {
-    UP: 1,
-    RIGHT: 2,
-    DOWN: 3,
-    LEFT: 4
-};
-
-
-const strokes = {
-    line: {
-        points: 2,
-        draw: function(ctx, points) {
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            ctx.lineTo(points[1].x, points[1].y);
-            ctx.stroke();
-        }
-    },
-    bezier: {
-        points: 4,
-        draw: function(ctx, points) {
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            ctx.bezierCurveTo(points[1].x, points[1].y, points[2].x, points[2].y, points[3].x, points[3].y);
-            ctx.stroke();
-            return 4;
-        }
+class Point {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
     }
-};
+}
+
+class Stroke {
+    constructor(points) {
+        this.points = points;
+    }
+    draw(ctx) {}
+}
+class Line extends Stroke {
+    static get requiredPoints() { return 2; }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        ctx.lineTo(this.points[1].x, this.points[1].y);
+        ctx.stroke();
+    }
+}
+class Bezier extends Stroke {
+    static get requiredPoints() { return 4; }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        ctx.bezierCurveTo(this.points[1].x, this.points[1].y, this.points[2].x, this.points[2].y, this.points[3].x, this.points[3].y);
+        ctx.stroke();
+    }
+}
+
+function genNextPoint(p0) {
+
+    const angleConstraint = 30;
+
+    // split canvas into 3x3 to determine what direction the next point can go
+    let angleMin = 0;
+    let angleMax = 0;
+    let radiusMin = GLYPH_SIZE / 3;
+    let radiusMax = GLYPH_SIZE / 3 * 2;
+
+    if(p0.x < GLYPH_SIZE / 3 && p0.y < GLYPH_SIZE / 3)
+    {
+        angleMin = -90;
+        angleMax = 0;
+    }
+    else if(p0.x < GLYPH_SIZE / 3 && p0.y < GLYPH_SIZE / 3 * 2)
+    {
+        angleMin = -90;
+        angleMax = 90;
+        radiusMin = GLYPH_SIZE / 3 / 3 * 2;
+        radiusMax = GLYPH_SIZE / 3;
+    }
+    else if(p0.x < GLYPH_SIZE / 3)
+    {
+        angleMin = 0;
+        angleMax = 90;
+    }
+    else if(p0.x < GLYPH_SIZE / 3 * 2 && p0.y < GLYPH_SIZE / 3)
+    {
+        angleMin = -180;
+        angleMax = 0;
+        radiusMin = GLYPH_SIZE / 3 / 3 * 2;
+        radiusMax = GLYPH_SIZE / 3;
+    }
+    else if(p0.x < GLYPH_SIZE / 3 * 2 && p0.y < GLYPH_SIZE / 3 * 2)
+    {
+        angleMin = 0;
+        angleMax = 360;
+        radiusMin = GLYPH_SIZE / 3 / 3 * 2;
+        radiusMax = GLYPH_SIZE / 3;
+    }
+    else if(p0.x < GLYPH_SIZE / 3 * 2)
+    {
+        angleMin = 0;
+        angleMax = 180;
+        radiusMin = GLYPH_SIZE / 3 / 3 * 2;
+        radiusMax = GLYPH_SIZE / 3;
+    }
+    else if(p0.y < GLYPH_SIZE / 3)
+    {
+        angleMin = 180;
+        angleMax = 270;
+    }
+    else if(p0.y < GLYPH_SIZE / 3 * 2)
+    {
+        angleMin = 90;
+        angleMax = 270;
+        radiusMin = GLYPH_SIZE / 3 / 3 * 2;
+        radiusMax = GLYPH_SIZE / 3;
+    }
+    else
+    {
+        angleMin = 90;
+        angleMax = 180;
+    }
+
+    let angle = randInt(angleMin / angleConstraint, angleMax / angleConstraint) * angleConstraint;
+    let rad = randFloat(radiusMin, radiusMax);
+    return new Point(
+        p0.x + Math.floor(Math.cos(angle * Math.PI / 180) * rad),
+        p0.y - Math.floor(Math.sin(angle * Math.PI / 180) * rad));
+}
+
+function randStroke(point) {
+    const jagginess = 0.25;
+    if(randFloat(0, 1) < jagginess)
+    {
+        let points = [ point ];
+        for(let i = 0; i < Line.requiredPoints; ++i)
+            points.push(point = genNextPoint(point));
+        return new Line(points);
+    }
+    else
+    {
+        let points = [ point ];
+        for(let i = 0; i < Bezier.requiredPoints; ++i)
+            points.push(point = genNextPoint(point));
+        return new Bezier(points);
+    }
+}
 
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
+
+function genPart()
+{
+    // a part is made up of strokes.
+    // we confine strokes vectors to 15deg or 45deg to give some sense of structure
+    let strokes = [];
+
+    // writing is commonly top-bottom, left-right, so we favor starting from the top
+    let y0 = Math.floor(Math.abs(gaussRand()) * GLYPH_SIZE);
+    let x0 = Math.floor(Math.abs(gaussRand()) * GLYPH_SIZE);
+    let p0 = new Point(x0, y0);
+    let startPoints = [ p0 ];
+
+    const maxStrokes = 4;
+
+    for(let i = 0; i < maxStrokes; ++i)
+    {
+        if(randInt(0, maxStrokes) < i)
+            break;
+
+        let stroke = randStroke(p0);
+        strokes.push(stroke);
+        startPoints.push(stroke.points[stroke.points.length - 1]);
+
+        p0 = startPoints.splice(randInt(0, startPoints.length - 1), 1)[0];
+    }
+
+    return strokes;
+}
+
 function genGlyph(ctx)
 {
-    var points = [];
+    // // point starting from border
+    // let dir = randInt(1,4);
+    // let pt0 = {x:0, y:0};
+    // if(dir == Direction.DOWN)
+    // {
+    //     pt0.x = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
+    // }
+    // if(dir == Direction.UP)
+    // {
+    //     pt0.x = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
+    //     pt0.y = GLYPH_SIZE;
+    // }
+    // if(dir == Direction.RIGHT)
+    // {
+    //     pt0.y = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
+    // }
+    // if(dir == Direction.LEFT)
+    // {
+    //     pt0.x = GLYPH_SIZE;
+    //     pt0.y = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
+    // }
 
-    // build list of points starting from border
-    let i = randInt(0, GLYPH_SIZE * 4 - 4);
-    let pt0 = { x : 0, y : 0 };
-    let dir = 0;
-    if(i <= GLYPH_SIZE) { pt0.x = i; pt0.y = 0; dir = Direction.DOWN; }
-    else if(i <= GLYPH_SIZE * 2) { pt0.x = GLYPH_SIZE; pt0.y = i - GLYPH_SIZE; dir = Direction.LEFT; }
-    else if(i <= GLYPH_SIZE * 3) { pt0.x = i % GLYPH_SIZE; pt0.y = GLYPH_SIZE; dir = Direction.UP; }
-    else { pt0.x = 0; pt0.y = i % GLYPH_SIZE; dir = Direction.RIGHT; }
-    points.push(pt0);
+    // for(let part = 0; part < 4; ++part)
+    // {
+    //     if(randInt(0, 4) < part)
+    //     {
+    //         break;
+    //     }
 
-    for(let n = 0; n < 4; ++n)
+    //     points = genPoints(pt0, dir);
+    //     pt0 = {x:pt0.x, y:pt0.y};
+    //     console.log(part, points.slice(0));
+
+    //     //figure out next start point
+    //     if(randInt(0,1) == 0) // start from first or last point
+    //     {
+    //         pt0 = points[randInt(0, points.length - 1)];
+    //     }
+    //     else // random pointthat passes through prev path
+    //     {
+    //         if(dir == Direction.UP)
+    //         {
+    //             pt0.y = randInt(points[0].y, points[points.length - 1].y);
+    //             pt0.x = randInt(0, Math.min(points[0].x, points[points.length - 1].x));
+    //             dir = Direction.RIGHT;
+    //         }
+    //         else if(dir == Direction.DOWN)
+    //         {
+    //             pt0.y = randInt(points[points.length - 1].y, points[0].y);
+    //             pt0.x = randInt(0, Math.min(points[0].x, points[points.length - 1].x));
+    //             dir = Direction.RIGHT;
+    //         }
+    //         else if(dir == Direction.RIGHT)
+    //         {
+    //             pt0.x = randInt(points[0].x, points[points.length - 1].x);
+    //             pt0.y = randInt(0, Math.min(points[0].y, points[points.length - 1].y));
+    //             dir = Direction.DOWN;
+    //         }
+    //         else if(dir == Direction.LEFT)
+    //         {
+    //             pt0.x = randInt(points[points.length - 1].x, points[0].x);
+    //             pt0.y = randInt(0, Math.min(points[0].y, points[points.length - 1].y));
+    //             dir = Direction.DOWN;
+    //         }
+    //     }
+
+    part = genPart();
+    for(let i = 0; i < part.length; ++i)
     {
-        if(randInt(0, 4) < n)
-        {
-            break;
-        }
-        if(dir == Direction.DOWN)
-        {
-            let x = randInt(0, GLYPH_SIZE);
-            let y = randInt(pt0.y, GLYPH_SIZE);
-            points.push(pt0 = {x: x, y: y});
-        }
-        else if(dir == Direction.UP)
-        {
-            let x = randInt(0, GLYPH_SIZE);
-            let y = randInt(0, pt0.y);
-            points.push(pt0 = {x: x, y: y});
-        }
-        else if(dir == Direction.LEFT)
-        {
-            let x = randInt(0, pt0.x);
-            let y = randInt(0, GLYPH_SIZE);
-            points.push(pt0 = {x: x, y: y});
-        }
-        else
-        {
-            let x = randInt(pt0.x, GLYPH_SIZE);
-            let y = randInt(0, GLYPH_SIZE);
-            points.push(pt0 = {x: x, y: y});
-        }
+        part[i].draw(ctx);
     }
-
-    while(points.length > 1)
-    {
-        let keys = Object.keys(strokes);
-        let index = randInt(0, keys.length - 1);
-        let i = 0;
-        let counter = 0;
-        while(true)
-        {
-            let stroke = strokes[keys[i % keys.length]];
-            if(points.length >= stroke.points)
-            {
-                if(counter == index)
-                {
-                    stroke.draw(ctx, points);
-                    for(let j = 1; j < stroke.points; ++j)
-                        points.shift();
-                    break;
-                }
-                ++counter;
-            }
-            ++i;
-        }
-    }
-
 
 
     // ctx.beginPath();
@@ -275,6 +396,7 @@ function genGlyphQuadraticCurve(ctx)
 function gen()
 {
     Math.seedrandom(settings.seed);
+    gaussRandSeed = randInt(0, 65536);
     for (const canvas of $canvases) {
         let ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
