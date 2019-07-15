@@ -3,6 +3,8 @@ const LINES_SIZE       = 4.0;
 const CURVES_SIZE      = 6.0;
 const LINE_WIDTH_SIZE  = 10.0;
 const LINE_LENGTH_SIZE = 256.0;
+const MID_POINT_X_SIZE = 100.0;
+const MID_POINT_Y_SIZE = 100.0;
 
 var settings = {
     seed: "",
@@ -10,7 +12,9 @@ var settings = {
     lineLength: 10,
     angle: 180,
     curves: 1,
-    lines: 1
+    lines: 1,
+    mid_x: 10,
+    mid_y: 10
 };
 
 var lasPosX = 0;
@@ -45,6 +49,14 @@ $("#curves-input").on("input", function(e) {
 });
 $("#lines-input").on("input", function (e) {
     settings.lines = $(this).val();
+    gen();
+});
+$("#mid-x-input").on("input", function (e) {
+    settings.mid_x = $(this).val();
+    gen();
+});
+$("#mid-y-input").on("input", function (e) {
+    settings.mid_y = $(this).val();
     gen();
 });
 
@@ -120,7 +132,7 @@ function genGlyphLines(ctx)
     ctx.stroke();
 }
 
-function genGlyphBezierCurve(ctx)
+function genGlyphQuadraticCurve(ctx)
 {
     ctx.beginPath();
     
@@ -134,17 +146,13 @@ function genGlyphBezierCurve(ctx)
     let y_end = randInt(10, GLYPH_SIZE - 10);
     
     //control point 1
-    let cp1x = randInt(x0 - 10, x0 + 10);
-    let cp1y = y0;
-    
-    //control point 2
-    let cp2x = randInt(x_end - 10, x_end + 10);
-    let cp2y = randInt(y_end - 10, y_end + 10);
-    
+    let cpx = Math.abs(x_end - x0) / 2.0 + MID_POINT_X_SIZE * settings.mid_x / 100.0;
+    let cpy = Math.abs(y_end - y0) / 2.0 + MID_POINT_Y_SIZE * settings.mid_y / 100.0;
+
     //========================================
     // LOOKS WRONG SO NEED TO MODIFY IF WE WANT TO USE
     //========================================
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x0, y0);
+    ctx.quadraticCurveTo(cpx, cpy, x_end, y_end);
     ctx.stroke();
 }
 
@@ -158,7 +166,7 @@ function gen()
         ctx.lineWidth = settings.lineWidth * LINE_WIDTH_SIZE / 100.0;
         genGlyph(ctx);
         genGlyphLines(ctx);
-        //genGlyphBezierCurve(ctx);
+        genGlyphQuadraticCurve(ctx);
     }
 }
 
