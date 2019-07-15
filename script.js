@@ -1,4 +1,4 @@
-const GLYPH_SIZE       = 128;
+const GLYPH_SIZE       = 256;
 const LINES_SIZE       = 4.0;
 const CURVES_SIZE      = 6.0;
 const LINE_WIDTH_SIZE  = 10.0;
@@ -7,6 +7,47 @@ const MID_POINT_X_SIZE = 100.0;
 const MID_POINT_Y_SIZE = 100.0;
 
 var settings = {
+
+    $params: $("#params-sidebar"),
+
+    saveSetting: function(name, val) {
+        this[name] = val;
+        if(window.localStorage["glyphgen.settings"] === undefined) {
+            let obj = {};
+            obj[name] = val;
+            window.localStorage["glyphgen.settings"] = JSON.stringify(obj);
+        }
+        else {
+            let obj = JSON.parse(window.localStorage["glyphgen.settings"]);
+            obj[name] = val;
+            window.localStorage["glyphgen.settings"] = JSON.stringify(obj);
+        }
+    },
+
+    load: function() {
+        if(window.localStorage["glyphgen.settings"] !== undefined) {
+            let obj = JSON.parse(window.localStorage["glyphgen.settings"]);
+            for (const key in obj) {
+                settings[key] = obj[key];
+                let id = key.replace(/\s/g, "-");
+                $("#" + id).val(obj[key]);
+            }
+        }
+    },
+
+    addSlider: function(name, display, min, max, step, defaultValue) {
+        let id = name.replace(/\s/g, "-");
+        this.$params.append('<div class="form-group">' +
+            `<label for="${id}">${display}</label>` +
+            `<input type="range" class="form-control-range" id="${id}" min="${min}" max="${max}" step="${step}" value="${defaultValue}">` +
+        '</div>');
+        $("#" + id).on("input", function(e) {
+            settings.saveSetting(name, $(this).val());
+            gen();
+        });
+        this[name] = defaultValue;
+    },
+
     seed: "",
     lineWidth: 10,
     lineLength: 10,
@@ -60,6 +101,14 @@ $("#mid-y-input").on("input", function (e) {
     settings.mid_y = $(this).val();
     gen();
 });
+settings.addSlider("lineWidth", "Line Width", 10, 100, 10, 50);
+// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
+// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
+// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
+// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
+// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
+settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1, 0.3);
+settings.load();
 
 function randFloat(min, max) // [min, max)
 {
@@ -201,8 +250,7 @@ function genNextPoint(p0) {
 }
 
 function randStroke(point) {
-    const jagginess = 0.25;
-    if(randFloat(0, 1) < jagginess)
+    if(randFloat(0, 1) < settings.jagginess)
     {
         let points = [ point ];
         for(let i = 0; i < Line.requiredPoints; ++i)
