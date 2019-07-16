@@ -15,8 +15,9 @@
   <div class="container-fluid">
     <div class="row">
 
+      <div class="col-lg-2"></div>
       <!-- Glyphs -->
-      <div class="col-md-8 col-12">
+      <div class="col-lg-5 col-md-8 col-12">
         <div class="row">
           <div class="col glyph">
             <canvas></canvas>
@@ -105,16 +106,17 @@
       </div>
 
       <!-- Parameters (see bootstrap forms) -->
-      <div class="col-md-4 col-12" id="params-sidebar">
+      <div class="col-lg-3 col-md-4 col-12" id="params-sidebar">
         <h3>Parameters</h3>
-        <label for="seed-input">Seed</label>
+        <label for="seed">Seed</label>
         <div class="input-group mb-3">
-          <input type="text" class="form-control" id="seed-input">
+          <input type="text" class="form-control" id="seed">
           <div class="input-group-append">
             <button class="btn btn-outline-secondary" type="button" id="randomize-btn">Randomize</button>
           </div>
         </div>
       </div>
+      <div class="col-lg-2"></div>
     </div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.1/seedrandom.min.js" integrity="sha384-hqVlsBbYhb+7Gg9S9ygfTPFCNc1rwL56/bduXVqV0lZSz0P2eGZhP+0ZJm/+yh1C" crossorigin="anonymous"></script>

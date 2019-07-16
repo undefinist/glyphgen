@@ -91,8 +91,8 @@ var $canvases = $(".glyph > canvas");
 $canvases.attr("width", GLYPH_SIZE).attr("height", GLYPH_SIZE);
 
 Math.seedrandom(); // replace Math.random using lib seedrandom
-$("#seed-input").on("input", function(e) {
-    settings.seed = $(this).val();
+$("#seed").on("input", function() {
+    settings.saveSetting("seed", $(this).val());
     gen();
 });
 $("#randomize-btn").on("click", function() {
@@ -101,15 +101,19 @@ $("#randomize-btn").on("click", function() {
     for(let i = 0; i < 5; ++i)
         str += map[randInt(0, map.length - 1)];
     settings.seed = str;
-    $("#seed-input").val(str);
+    $("#seed").val(str);
     gen();
 });
 
 settings.addBool("normalize", "Normalize Glyph", false);
 settings.addRange("lineWidth", "Line Width", 1, 32, 1, 8);
-settings.addRange("jagginess", "Jagginess (higher = more straight lines)", 0, 1, 0.1, 0.3);
+settings.addRange("jagginess", "Jagginess (straight lines weight)", 0, 1, 0.1, 0.3);
+settings.addRange("angleVariance", "Angular Variance", 1, 10, 1, 3);
 settings.addRange("minStrokes", "Min Strokes (per part)", 1, 6, 1, 1);
 settings.addRange("maxStrokes", "Max Strokes (per part)", 1, 6, 1, 4);
+settings.addRange("minParts", "Min Parts (per glyph)", 1, 4, 1, 1);
+settings.addRange("maxParts", "Max Parts (per glyph)", 1, 4, 1, 1);
+settings.addRange("arcWeight", "Arc Weight (chance of arcs)", 0, 1, 0.1, 0.5);
 settings.load();
 
 function randFloat(min, max) // [min, max)
@@ -299,7 +303,7 @@ var strokeModifiers = {
 
 function genNextPoint(p0) {
 
-    const angleConstraint = 30;
+    const angleConstraint = 90 / settings.angleVariance;
 
     // split canvas into 3x3 to determine what direction the next point can go
     let angleMin = 0;
@@ -382,19 +386,19 @@ function randStroke(point) {
     }
     else
     {
-        if(randFloat(0, 1) < 0.8)
-        {
-            let points = [ point ];
-            for(let i = 1; i < Bezier.requiredPoints; ++i)
-                points.push(point = genNextPoint(point));
-            return new Bezier(points);
-        }
-        else
+        if(randFloat(0, 1) < settings.arcWeight)
         {
             let points = [ point ];
             for(let i = 1; i < Arc.requiredPoints; ++i)
                 points.push(point = genNextPoint(point));
             return new Arc(points);
+        }
+        else
+        {
+            let points = [ point ];
+            for(let i = 1; i < Bezier.requiredPoints; ++i)
+                points.push(point = genNextPoint(point));
+            return new Bezier(points);
         }
     }
 }
@@ -473,11 +477,9 @@ function preGen()
 
 function genGlyph(ctx)
 {
-    const maxParts = 1;
-
     let parts = [];
-    for(let part = 0; part < maxParts; ++part) {
-        if(randInt(0, maxParts) < part)
+    for(let part = 0; part < settings.maxParts; ++part) {
+        if(randInt(0, settings.maxParts - settings.minParts) < part - settings.minParts + 1)
             break;
         parts.push(genPart());
     }
