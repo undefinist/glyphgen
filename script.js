@@ -82,7 +82,6 @@ var settings = {
 
 var lasPosX = 0;
 var lasPosY = 0;
-var gaussRandSeed = 0;
 
 // init canvas widths and heights (easier to do from here)
 // this sizes are separate from the actual widths and heights in the browser
@@ -99,7 +98,7 @@ $("#randomize-btn").on("click", function() {
     const map = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     let str = "";
     for(let i = 0; i < 5; ++i)
-        str += map[randInt(0, map.length - 1)];
+        str += map[random.int(0, map.length - 1)];
     settings.seed = str;
     $("#seed").val(str);
     gen();
@@ -116,38 +115,46 @@ settings.addRange("maxParts", "Max Parts (per glyph)", 1, 4, 1, 1);
 settings.addRange("arcWeight", "Arc Weight", 0, 1, 0.1, 0.5);
 settings.load();
 
-function randFloat(min, max) // [min, max)
-{
-    return Math.random() * (max - min) + min;
+var random = {
+    prerolledValues: [],
+
+    // discards any prerolled values, then prerolls values
+    preroll: function(count) {
+        this.prerolledValues = [];
+        for(let i = 0; i < count; ++i)
+            this.prerolledValues.push(Math.random());
+    },
+
+    // gets from prerolled, or rolls. [0, 1)
+    get: function() {
+        return this.prerolledValues.length == 0 ? Math.random() : this.prerolledValues.shift();
+    },
+
+    // [min, max)
+    number: function(min = 0, max = 1) {
+        return this.get() * (max - min) + min;
+    },
+  
+    // [min, max]
+    int: function(min = 0, max = 100) {
+        return Math.floor(this.get() * (max - min + 1)) + min;
+    },
+
+    // ~ [-1, 1]
+    gaussian: function() {
+        var u = 0, v = 0;
+        while(u === 0) u = this.get(); //Converting [0,1) to (0,1)
+        while(v === 0) v = this.get();
+        return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v ) / 3;
+    }
 }
-function randInt(min, max) // [min, max]
-{
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-function randPoint()
-{
-    return new Point(randInt(0, GLYPH_SIZE), randInt(0, GLYPH_SIZE));
-}
+
+
 function clamp(value, min, max)
 {
     return value < min ? min : (value > max ? max : value);
 }
-function gaussRand()
-{
-    var u = 0, v = 0;
-    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
-    while(v === 0) v = Math.random();
-    return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v ) / 3;
-}
-// function genGlyph(ctx)
-// {
-    // ctx.beginPath();
 
-    // let x0 = randInt(16, GLYPH_SIZE - 16);
-    // let y0 = randInt(16, GLYPH_SIZE - 16);
-    // ctx.arc(x0, y0, randInt(4, 32), randFloat(0, Math.PI * 2), randFloat(0, Math.PI));
-    // ctx.stroke();
-// }
 
 
 class Point {
@@ -208,9 +215,9 @@ class Bezier extends Stroke {
 class Arc extends Stroke {
     constructor(points, r, a, s) {
         super(points);
-        this.r = r ? r : randInt(GLYPH_SIZE / 12, GLYPH_SIZE / 6);
-        this.a = a ? a : Math.PI * (gaussRand() + 1);
-        this.s = s ? s : randFloat(0, Math.PI * 2);
+        this.r = r ? r : random.int(GLYPH_SIZE / 12, GLYPH_SIZE / 6);
+        this.a = a ? a : Math.PI * (random.gaussian() + 1);
+        this.s = s ? s : random.number(0, Math.PI * 2);
     }
     static get requiredPoints() { return 1; }
     draw(ctx) {
@@ -244,31 +251,24 @@ var strokeModifiers = {
             else
                 pt.x += (c - pt.x) * 2;
         }
-        if(stroke.constructor.name == "Arc")
-        {
+        if(stroke.constructor.name == "Arc") {
             if(axis === "y")
-            {
                 stroke.s = -stroke.s;
-                stroke.a = -stroke.a;
-            }
             else
-            {
                 stroke.s = Math.PI - stroke.s;
-                stroke.a = -stroke.a;
-            }
+            stroke.a = -stroke.a;
         }
         return stroke;
     },
     rotate90: function(stroke, center) {
         stroke = stroke.clone();
         for (let pt of stroke.points) {
-            pt.x += pt.y - center.y;
-            pt.y += pt.x - center.x;
+            let px = pt.x;
+            pt.x = center.x + pt.y - center.y;
+            pt.y = center.y + px - center.x;
         }
         if(stroke.constructor.name == "Arc")
-        {
             stroke.s += Math.PI / 2;
-        }
         return stroke;
     },
     scale: function(stroke, center, mag) {
@@ -278,22 +278,19 @@ var strokeModifiers = {
             pt.y = center.y + (pt.y - center.y) * mag;
         }
         if(stroke.constructor.name == "Arc")
-        {
             stroke.r *= mag;
-        }
         return stroke;
     },
     vary: function(stroke, maxOffset) {
         stroke = stroke.clone();
         for (let pt of stroke.points) {
-            pt.x += gaussRand() * maxOffset;
-            pt.y += gaussRand() * maxOffset;
+            pt.x += random.gaussian() * maxOffset;
+            pt.y += random.gaussian() * maxOffset;
         }
-        if(stroke.constructor.name == "Arc")
-        {
-            stroke.r *= gaussRand() * maxOffset;
-            stroke.a *= gaussRand() * maxOffset;
-            stroke.s *= gaussRand() * maxOffset;
+        if(stroke.constructor.name == "Arc") {
+            stroke.r += random.gaussian() * maxOffset;
+            stroke.a += random.gaussian() * maxOffset;
+            stroke.s += random.gaussian() * maxOffset;
         }
         return stroke;
     }
@@ -367,8 +364,8 @@ function genNextPoint(p0) {
         angleMax = 180;
     }
 
-    let angle = randInt(angleMin / angleConstraint, angleMax / angleConstraint) * angleConstraint;
-    let rad = randFloat(radiusMin, radiusMax);
+    let angle = random.int(angleMin / angleConstraint, angleMax / angleConstraint) * angleConstraint;
+    let rad = random.number(radiusMin, radiusMax);
     return new Point(
         p0.x + Math.floor(Math.cos(angle * Math.PI / 180) * rad),
         p0.y - Math.floor(Math.sin(angle * Math.PI / 180) * rad));
@@ -377,7 +374,7 @@ function genNextPoint(p0) {
 
 
 function randStroke(point) {
-    if(randFloat(0, 1) < settings.jagginess)
+    if(random.number(0, 1) < settings.jagginess)
     {
         let points = [ point ];
         for(let i = 1; i < Line.requiredPoints; ++i)
@@ -386,7 +383,7 @@ function randStroke(point) {
     }
     else
     {
-        if(randFloat(0, 1) < settings.arcWeight)
+        if(random.number(0, 1) < settings.arcWeight)
         {
             let points = [ point ];
             for(let i = 1; i < Arc.requiredPoints; ++i)
@@ -420,8 +417,9 @@ function reuseStroke(point, stroke) {
         modStrokes.push(strokeModifiers.translate(modStrokes[i], delta));
     }
 
-    // add translated versions of original stroke
-    modStrokes.push(strokeModifiers.translate(stroke, {x: randInt(8, 16) * randInt(-1, 1), y: randInt(8, 16) * randInt(-1, 1)}));
+    // add translated version of original stroke
+    let offset = Point.difference(genNextPoint(point), point);
+    modStrokes.push(strokeModifiers.translate(stroke, offset));
 
     for(let i = 0; i < modStrokes.length; ++i) {
         bounds = modStrokes[i].bounds;
@@ -432,7 +430,7 @@ function reuseStroke(point, stroke) {
     if(modStrokes.length == 0)
         return null;
 
-    let i = randInt(0, modStrokes.length - 1);
+    let i = random.int(0, modStrokes.length - 1);
     return modStrokes[i];
 }
 
@@ -443,43 +441,38 @@ function genPart()
     let strokes = [];
 
     // writing is commonly top-bottom, left-right, so we favor starting from the top
-    let y0 = Math.floor(Math.abs(gaussRand()) * GLYPH_SIZE);
-    let x0 = Math.floor(Math.abs(gaussRand()) * GLYPH_SIZE);
+    let y0 = Math.floor(Math.abs(random.gaussian()) * GLYPH_SIZE);
+    let x0 = Math.floor(Math.abs(random.gaussian()) * GLYPH_SIZE);
     let p0 = new Point(x0, y0);
     let startPoints = [ p0 ];
 
     for(let i = 0; i < settings.maxStrokes; ++i)
     {
-        if(randInt(0, settings.maxStrokes - settings.minStrokes) < i - settings.minStrokes + 1)
+        if(random.int(0, settings.maxStrokes - settings.minStrokes) < i - settings.minStrokes + 1)
             break;
 
         let stroke = null;
-        if(strokes.length > 0 && randFloat(0, 1) < 0.5)
-            stroke = reuseStroke(p0, strokes[randInt(0, strokes.length - 1)]);
+        if(strokes.length > 0 && random.number(0, 1) < 0.5)
+            stroke = reuseStroke(p0, strokes[random.int(0, strokes.length - 1)]);
         if(stroke == null)
             stroke = randStroke(p0);
         
         strokes.push(stroke);
         startPoints.push(stroke.points[stroke.points.length - 1]);
 
-        p0 = startPoints.splice(randInt(0, startPoints.length - 1), 1)[0];
+        p0 = startPoints.splice(random.int(0, startPoints.length - 1), 1)[0];
     }
 
     return strokes;
 }
 
-function preGen()
-{
-    // parts = [];
-    // for(i = 0; i < 10; ++i)
-    //     parts.push(genPart());
-}
-
 function genGlyph(ctx)
 {
+    random.preroll(200);
+
     let parts = [];
     for(let part = 0; part < settings.maxParts; ++part) {
-        if(randInt(0, settings.maxParts - settings.minParts) < part - settings.minParts + 1)
+        if(random.int(0, settings.maxParts - settings.minParts) < part - settings.minParts + 1)
             break;
         parts.push(genPart());
     }
@@ -508,7 +501,7 @@ function genGlyph(ctx)
         }
     }
 
-    // let ending_stroke = randInt(0, 3);
+    // let ending_stroke = random.int(0, 3);
     
     // if(ending_stroke == 0)
     // {    
@@ -535,12 +528,12 @@ function genGlyph(ctx)
     // let rad = settings.angle * Math.PI / 180;
     // let numCurves = CURVES_SIZE * settings.curves / 100.0;
     // for (var i = 0; i < numCurves; ++i) {
-    //     let x0 = randInt(16, GLYPH_SIZE - 16);
-    //     let y0 = randInt(16, GLYPH_SIZE - 16);
+    //     let x0 = random.int(16, GLYPH_SIZE - 16);
+    //     let y0 = random.int(16, GLYPH_SIZE - 16);
     //     //Save last known position
-    //     lasPosX = x0 + randInt(0, 6);
-    //     lasPosY = y0 + randInt(0, 6);
-    //     ctx.arc(x0, y0, randInt(4, 32), randFloat(0, rad * 2), randFloat(0, rad));   
+    //     lasPosX = x0 + random.int(0, 6);
+    //     lasPosY = y0 + random.int(0, 6);
+    //     ctx.arc(x0, y0, random.int(4, 32), random.number(0, rad * 2), random.number(0, rad));   
     // }  
     // ctx.stroke();
 }
@@ -555,18 +548,18 @@ function genGlyphLines(ctx, x0, y0)
       //Implement something to let user decide how many lines?
     for (var i = 0; i < numLines; ++i)
     {
-        //let x0 = lasPosX;//randInt(16, GLYPH_SIZE - 16);
-        //let y0 = lasPosY;//randInt(16, GLYPH_SIZE - 16);
+        //let x0 = lasPosX;//random.int(16, GLYPH_SIZE - 16);
+        //let y0 = lasPosY;//random.int(16, GLYPH_SIZE - 16);
         // move to a random coordinate on the box
         ctx.moveTo(x0, y0);
         //Get a random direction
-        let ranRadY = Math.sin(randFloat(0.0, Math.PI));
-        let ranRadX = Math.cos(randFloat(0.0, Math.PI));
+        let ranRadY = Math.sin(random.number(0.0, Math.PI));
+        let ranRadX = Math.cos(random.number(0.0, Math.PI));
         let mag = settings.lineLength * LINE_LENGTH_SIZE / 100.0;
         lasPosX = clamp(x0 + ranRadX * mag, 0, GLYPH_SIZE);
         lasPosY = clamp(y0 + ranRadY * mag, 0, GLYPH_SIZE);
         // draw a line from moveTo to another random point
-        //ctx.lineTo(randInt(x0+ 16, GLYPH_SIZE - 16), randInt(16 + y0, GLYPH_SIZE - 16));
+        //ctx.lineTo(random.int(x0+ 16, GLYPH_SIZE - 16), random.int(16 + y0, GLYPH_SIZE - 16));
         //Draw line to <x0, y0> + <ranRadX, ranRadY> * lineLength
         ctx.lineTo(lasPosX, lasPosY);
     }
@@ -579,13 +572,13 @@ function genGlyphQuadraticCurve(ctx, x0, y0)
     ctx.beginPath();
     
     // move to a random coordinate on the box
-    //let x0 = randInt(16, GLYPH_SIZE - 16);
-    //let y0 = randInt(16, GLYPH_SIZE - 16);
+    //let x0 = random.int(16, GLYPH_SIZE - 16);
+    //let y0 = random.int(16, GLYPH_SIZE - 16);
     ctx.moveTo(x0, y0);
     
     // end point
-    let x_end = randInt(10, GLYPH_SIZE - 10);
-    let y_end = randInt(10, GLYPH_SIZE - 10);
+    let x_end = random.int(10, GLYPH_SIZE - 10);
+    let y_end = random.int(10, GLYPH_SIZE - 10);
     
     //control point 1
     let cpx = Math.abs(x_end - x0) / 2.0 + MID_POINT_X_SIZE * settings.mid_x / 100.0;
@@ -601,38 +594,13 @@ function genGlyphQuadraticCurve(ctx, x0, y0)
 function gen()
 {
     Math.seedrandom(settings.seed);
-    gaussRandSeed = randInt(0, 65536);
-    preGen();
     for (const canvas of $canvases) {
         let ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineCap = "round";
         ctx.lineWidth = settings.lineWidth;
         genGlyph(ctx);
-        // genGlyphLines(ctx);
-        // genGlyphBezierCurve(ctx);
     }
 }
 
 gen();
-
-// var permArr = [],
-  // usedChars = [];
-
-// function permute(input) {
-  // var i, ch;
-  // for (i = 0; i < input.length; i++) {
-    // ch = input.splice(i, 1)[0];
-    // usedChars.push(ch);
-    // if (input.length == 0) {
-      // permArr.push(usedChars.slice());
-    // }
-    // permute(input);
-    // input.splice(i, 0, ch);
-    // usedChars.pop();
-  // }
-  // return permArr
-// };
-
-
-// document.write(JSON.stringify(permute([1, 2, 3])));
