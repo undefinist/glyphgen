@@ -107,13 +107,13 @@ $("#randomize-btn").on("click", function() {
 
 settings.addBool("normalize", "Normalize Glyph", false);
 settings.addRange("lineWidth", "Line Width", 1, 32, 1, 8);
-settings.addRange("jagginess", "Jagginess (straight lines weight)", 0, 1, 0.1, 0.3);
+settings.addRange("jagginess", "Jagginess", 0, 1, 0.1, 0.3);
 settings.addRange("angleVariance", "Angular Variance", 1, 10, 1, 3);
 settings.addRange("minStrokes", "Min Strokes (per part)", 1, 6, 1, 1);
 settings.addRange("maxStrokes", "Max Strokes (per part)", 1, 6, 1, 4);
 settings.addRange("minParts", "Min Parts (per glyph)", 1, 4, 1, 1);
 settings.addRange("maxParts", "Max Parts (per glyph)", 1, 4, 1, 1);
-settings.addRange("arcWeight", "Arc Weight (chance of arcs)", 0, 1, 0.1, 0.5);
+settings.addRange("arcWeight", "Arc Weight", 0, 1, 0.1, 0.5);
 settings.load();
 
 function randFloat(min, max) // [min, max)
