@@ -17,7 +17,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    border: 2px dotted gray;
+    outline: 2px dotted gray;
     border-radius: 4px;
 }
 
@@ -25,4 +25,12 @@
     background: #eee;
     padding-top: 15px;
     border-radius: 8px 0 0 8px;
+}
+
+label {
+    margin-bottom: .1rem;
+}
+span.slider-value {
+    float: right;
+    color: #6c757d;
 }

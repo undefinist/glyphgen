@@ -30,19 +30,41 @@ var settings = {
             for (const key in obj) {
                 settings[key] = obj[key];
                 let id = key.replace(/\s/g, "-");
-                $("#" + id).val(obj[key]);
+                if(obj[key] === true || obj[key] === false)
+                    $("#" + id)[0].checked = obj[key];
+                else
+                {
+                    $("#" + id).val(obj[key]);
+                    $("#" + id + "-val").text(obj[key]);
+                }
             }
         }
     },
 
-    addSlider: function(name, display, min, max, step, defaultValue) {
+    addRange: function(name, label, min, max, step, defaultValue) {
         let id = name.replace(/\s/g, "-");
-        this.$params.append('<div class="form-group">' +
-            `<label for="${id}">${display}</label>` +
-            `<input type="range" class="form-control-range" id="${id}" min="${min}" max="${max}" step="${step}" value="${defaultValue}">` +
-        '</div>');
-        $("#" + id).on("input", function(e) {
+        this.$params.append(
+            `<label for="${id}">${label}</label>` +
+            `<span class="slider-value" id="${id}-val">${defaultValue}</span>` +
+            '<div class="input-group mb-3">' +
+                `<input type="range" class="custom-range" id="${id}" min="${min}" max="${max}" step="${step}" value="${defaultValue}">` +
+            '</div>');
+        $("#" + id).on("input", function() {
             settings.saveSetting(name, $(this).val());
+            $("#" + id + "-val").text($(this).val());
+            gen();
+        });
+        this[name] = defaultValue;
+    },
+    addBool: function(name, label, defaultValue) {
+        let id = name.replace(/\s/g, "-");
+        this.$params.append(
+            '<div class="custom-control custom-switch mb-3">' +
+                `<input type="checkbox" class="custom-control-input" id="${id}" ${defaultValue ? "checked" : ""}>` +
+                `<label class="custom-control-label" for="${id}">${label}</label>` +
+            "</div>");
+        $("#" + id).on("input", function() {
+            settings.saveSetting(name, this.checked);
             gen();
         });
         this[name] = defaultValue;
@@ -73,41 +95,21 @@ $("#seed-input").on("input", function(e) {
     settings.seed = $(this).val();
     gen();
 });
-$("#line-width").on("input", function(e) {
-    settings.lineWidth = $(this).val();
+$("#randomize-btn").on("click", function() {
+    const map = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    let str = "";
+    for(let i = 0; i < 5; ++i)
+        str += map[randInt(0, map.length - 1)];
+    settings.seed = str;
+    $("#seed-input").val(str);
     gen();
 });
-$("#line-length").on("input", function (e) {
-    settings.lineLength = $(this).val();
-    gen();
-});
-$("#circle-arc-angle").on("input", function(e) {
-    settings.angle = $(this).val();
-    gen();
-});
-$("#curves-input").on("input", function(e) {
-    settings.curves = $(this).val();
-    gen();
-});
-$("#lines-input").on("input", function (e) {
-    settings.lines = $(this).val();
-    gen();
-});
-$("#mid-x-input").on("input", function (e) {
-    settings.mid_x = $(this).val();
-    gen();
-});
-$("#mid-y-input").on("input", function (e) {
-    settings.mid_y = $(this).val();
-    gen();
-});
-settings.addSlider("lineWidth", "Line Width", 10, 100, 10, 50);
-// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
-// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
-// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
-// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
-// settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1);
-settings.addSlider("jagginess", "Jagginess", 0, 1, 0.1, 0.3);
+
+settings.addBool("normalize", "Normalize Glyph", false);
+settings.addRange("lineWidth", "Line Width", 1, 32, 1, 8);
+settings.addRange("jagginess", "Jagginess (higher = more straight lines)", 0, 1, 0.1, 0.3);
+settings.addRange("minStrokes", "Min Strokes (per part)", 1, 6, 1, 1);
+settings.addRange("maxStrokes", "Max Strokes (per part)", 1, 6, 1, 4);
 settings.load();
 
 function randFloat(min, max) // [min, max)
@@ -149,13 +151,35 @@ class Point {
         this.x = x;
         this.y = y;
     }
+    static difference(p0, p1) { return new Point(p0.x - p1.x, p0.y - p1.y); }
 }
+
+
 
 class Stroke {
     constructor(points) {
         this.points = points;
     }
     draw(ctx) {}
+    get bounds() {
+        let rect = { min: new Point(GLYPH_SIZE, GLYPH_SIZE), max: new Point(0, 0) };
+        for (const pt of this.points) {
+            rect.min.x = Math.min(pt.x, rect.min.x);
+            rect.min.y = Math.min(pt.y, rect.min.y);
+            rect.max.x = Math.max(pt.x, rect.max.x);
+            rect.max.y = Math.max(pt.y, rect.max.y);
+        }
+        return rect;
+    }
+
+    clonePoints() {
+        let pts = [];
+        for (const pt of this.points) {
+            pts.push(new Point(pt.x, pt.y));
+        }
+        return pts;
+    }
+    clone() {}
 }
 class Line extends Stroke {
     static get requiredPoints() { return 2; }
@@ -165,6 +189,7 @@ class Line extends Stroke {
         ctx.lineTo(this.points[1].x, this.points[1].y);
         ctx.stroke();
     }
+    clone() { return new Line(this.clonePoints()); }
 }
 class Bezier extends Stroke {
     static get requiredPoints() { return 4; }
@@ -174,7 +199,103 @@ class Bezier extends Stroke {
         ctx.bezierCurveTo(this.points[1].x, this.points[1].y, this.points[2].x, this.points[2].y, this.points[3].x, this.points[3].y);
         ctx.stroke();
     }
+    clone() { return new Bezier(this.clonePoints()); }
 }
+class Arc extends Stroke {
+    constructor(points, r, a, s) {
+        super(points);
+        this.r = r ? r : randInt(GLYPH_SIZE / 12, GLYPH_SIZE / 6);
+        this.a = a ? a : Math.PI * (gaussRand() + 1);
+        this.s = s ? s : randFloat(0, Math.PI * 2);
+    }
+    static get requiredPoints() { return 1; }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.points[0].x, this.points[0].y, this.r, this.s, this.s+this.a);
+        ctx.stroke();
+    }
+    clone() { return new Arc(this.clonePoints(), this.r, this.a, this.s); }
+    get bounds() {
+        return { min: new Point(this.points[0].x - this.r, this.points[0].y - this.r),
+                 max: new Point(this.points[0].x + this.r, this.points[0].y + this.r)};
+    }
+}
+
+
+
+var strokeModifiers = {
+    translate: function(stroke, delta) {
+        stroke = stroke.clone();
+        for (let pt of stroke.points) {
+            pt.x += delta.x;
+            pt.y += delta.y;
+        }
+        return stroke;
+    },
+    mirror: function(stroke, axis, c) {
+        stroke = stroke.clone();
+        for (let pt of stroke.points) {
+            if(axis === "y")
+                pt.y += (c - pt.y) * 2;
+            else
+                pt.x += (c - pt.x) * 2;
+        }
+        if(stroke.constructor.name == "Arc")
+        {
+            if(axis === "y")
+            {
+                stroke.s = -stroke.s;
+                stroke.a = -stroke.a;
+            }
+            else
+            {
+                stroke.s = Math.PI - stroke.s;
+                stroke.a = -stroke.a;
+            }
+        }
+        return stroke;
+    },
+    rotate90: function(stroke, center) {
+        stroke = stroke.clone();
+        for (let pt of stroke.points) {
+            pt.x += pt.y - center.y;
+            pt.y += pt.x - center.x;
+        }
+        if(stroke.constructor.name == "Arc")
+        {
+            stroke.s += Math.PI / 2;
+        }
+        return stroke;
+    },
+    scale: function(stroke, center, mag) {
+        stroke = stroke.clone();
+        for (let pt of stroke.points) {
+            pt.x = center.x + (pt.x - center.x) * mag;
+            pt.y = center.y + (pt.y - center.y) * mag;
+        }
+        if(stroke.constructor.name == "Arc")
+        {
+            stroke.r *= mag;
+        }
+        return stroke;
+    },
+    vary: function(stroke, maxOffset) {
+        stroke = stroke.clone();
+        for (let pt of stroke.points) {
+            pt.x += gaussRand() * maxOffset;
+            pt.y += gaussRand() * maxOffset;
+        }
+        if(stroke.constructor.name == "Arc")
+        {
+            stroke.r *= gaussRand() * maxOffset;
+            stroke.a *= gaussRand() * maxOffset;
+            stroke.s *= gaussRand() * maxOffset;
+        }
+        return stroke;
+    }
+}
+
+
 
 function genNextPoint(p0) {
 
@@ -249,24 +370,67 @@ function genNextPoint(p0) {
         p0.y - Math.floor(Math.sin(angle * Math.PI / 180) * rad));
 }
 
+
+
 function randStroke(point) {
     if(randFloat(0, 1) < settings.jagginess)
     {
         let points = [ point ];
-        for(let i = 0; i < Line.requiredPoints; ++i)
+        for(let i = 1; i < Line.requiredPoints; ++i)
             points.push(point = genNextPoint(point));
         return new Line(points);
     }
     else
     {
-        let points = [ point ];
-        for(let i = 0; i < Bezier.requiredPoints; ++i)
-            points.push(point = genNextPoint(point));
-        return new Bezier(points);
+        if(randFloat(0, 1) < 0.8)
+        {
+            let points = [ point ];
+            for(let i = 1; i < Bezier.requiredPoints; ++i)
+                points.push(point = genNextPoint(point));
+            return new Bezier(points);
+        }
+        else
+        {
+            let points = [ point ];
+            for(let i = 1; i < Arc.requiredPoints; ++i)
+                points.push(point = genNextPoint(point));
+            return new Arc(points);
+        }
     }
 }
 
+function reuseStroke(point, stroke) {
+    let bounds = stroke.bounds;
 
+    let modStrokes = [];
+    modStrokes.push(strokeModifiers.mirror(stroke, "x", (bounds.max.x + bounds.min.x) * 0.5));
+    modStrokes.push(strokeModifiers.mirror(stroke, "y", (bounds.max.y + bounds.min.y) * 0.5));
+    modStrokes.push(strokeModifiers.rotate90(stroke, stroke.points[0]));
+    modStrokes.push(strokeModifiers.rotate90(modStrokes[modStrokes.length - 1], stroke.points[0]));
+    modStrokes.push(strokeModifiers.rotate90(modStrokes[modStrokes.length - 1], stroke.points[0]));
+
+    // repeat stroke starting from point
+    let delta = Point.difference(stroke.points[0], point);
+    modStrokes.push(strokeModifiers.translate(stroke, delta));
+    for(let i = 0; i < 5; ++i) {
+        modStrokes.push(strokeModifiers.translate(modStrokes[i], delta));
+    }
+
+    // add translated versions of original stroke
+    modStrokes.push(strokeModifiers.translate(stroke, {x: randInt(8, 16) * randInt(-1, 1), y: randInt(8, 16) * randInt(-1, 1)}));
+
+    for(let i = 0; i < modStrokes.length; ++i) {
+        bounds = modStrokes[i].bounds;
+        if(bounds.min.x < 0 || bounds.min.y < 0 || bounds.max.x > GLYPH_SIZE || bounds.max.y > GLYPH_SIZE)
+            modStrokes.splice(i--, 1);
+    }
+
+    if(modStrokes.length == 0)
+        return null;
+
+    let i = randInt(0, modStrokes.length - 1);
+    return modStrokes[i];
+}
 
 function genPart()
 {
@@ -280,14 +444,17 @@ function genPart()
     let p0 = new Point(x0, y0);
     let startPoints = [ p0 ];
 
-    const maxStrokes = 4;
-
-    for(let i = 0; i < maxStrokes; ++i)
+    for(let i = 0; i < settings.maxStrokes; ++i)
     {
-        if(randInt(0, maxStrokes) < i)
+        if(randInt(0, settings.maxStrokes - settings.minStrokes) < i - settings.minStrokes + 1)
             break;
 
-        let stroke = randStroke(p0);
+        let stroke = null;
+        if(strokes.length > 0 && randFloat(0, 1) < 0.5)
+            stroke = reuseStroke(p0, strokes[randInt(0, strokes.length - 1)]);
+        if(stroke == null)
+            stroke = randStroke(p0);
+        
         strokes.push(stroke);
         startPoints.push(stroke.points[stroke.points.length - 1]);
 
@@ -297,78 +464,46 @@ function genPart()
     return strokes;
 }
 
+function preGen()
+{
+    // parts = [];
+    // for(i = 0; i < 10; ++i)
+    //     parts.push(genPart());
+}
+
 function genGlyph(ctx)
 {
-    // // point starting from border
-    // let dir = randInt(1,4);
-    // let pt0 = {x:0, y:0};
-    // if(dir == Direction.DOWN)
-    // {
-    //     pt0.x = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
-    // }
-    // if(dir == Direction.UP)
-    // {
-    //     pt0.x = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
-    //     pt0.y = GLYPH_SIZE;
-    // }
-    // if(dir == Direction.RIGHT)
-    // {
-    //     pt0.y = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
-    // }
-    // if(dir == Direction.LEFT)
-    // {
-    //     pt0.x = GLYPH_SIZE;
-    //     pt0.y = (gaussRand() + 1) * GLYPH_SIZE * 0.5;
-    // }
+    const maxParts = 1;
 
-    // for(let part = 0; part < 4; ++part)
-    // {
-    //     if(randInt(0, 4) < part)
-    //     {
-    //         break;
-    //     }
+    let parts = [];
+    for(let part = 0; part < maxParts; ++part) {
+        if(randInt(0, maxParts) < part)
+            break;
+        parts.push(genPart());
+    }
 
-    //     points = genPoints(pt0, dir);
-    //     pt0 = {x:pt0.x, y:pt0.y};
-    //     console.log(part, points.slice(0));
+    // center glyph
+    let bounds = parts[0][0].bounds;
+    for(const part of parts) {
+        for (const stroke of part) {
+            let strokeBounds = stroke.bounds;
+            bounds.min.x = Math.min(strokeBounds.min.x, bounds.min.x);
+            bounds.min.y = Math.min(strokeBounds.min.y, bounds.min.y);
+            bounds.max.x = Math.max(strokeBounds.max.x, bounds.max.x);
+            bounds.max.y = Math.max(strokeBounds.max.y, bounds.max.y);
+        }
+    }
+    let center = new Point((bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2);
+    let delta = Point.difference(new Point(GLYPH_SIZE / 2, GLYPH_SIZE / 2), center);
+    let scale = (GLYPH_SIZE - settings.lineWidth * 2) / Math.max(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
 
-    //     //figure out next start point
-    //     if(randInt(0,1) == 0) // start from first or last point
-    //     {
-    //         pt0 = points[randInt(0, points.length - 1)];
-    //     }
-    //     else // random pointthat passes through prev path
-    //     {
-    //         if(dir == Direction.UP)
-    //         {
-    //             pt0.y = randInt(points[0].y, points[points.length - 1].y);
-    //             pt0.x = randInt(0, Math.min(points[0].x, points[points.length - 1].x));
-    //             dir = Direction.RIGHT;
-    //         }
-    //         else if(dir == Direction.DOWN)
-    //         {
-    //             pt0.y = randInt(points[points.length - 1].y, points[0].y);
-    //             pt0.x = randInt(0, Math.min(points[0].x, points[points.length - 1].x));
-    //             dir = Direction.RIGHT;
-    //         }
-    //         else if(dir == Direction.RIGHT)
-    //         {
-    //             pt0.x = randInt(points[0].x, points[points.length - 1].x);
-    //             pt0.y = randInt(0, Math.min(points[0].y, points[points.length - 1].y));
-    //             dir = Direction.DOWN;
-    //         }
-    //         else if(dir == Direction.LEFT)
-    //         {
-    //             pt0.x = randInt(points[points.length - 1].x, points[0].x);
-    //             pt0.y = randInt(0, Math.min(points[0].y, points[points.length - 1].y));
-    //             dir = Direction.DOWN;
-    //         }
-    //     }
-
-    part = genPart();
-    for(let i = 0; i < part.length; ++i)
-    {
-        part[i].draw(ctx);
+    for(const part of parts) {
+        for (const stroke of part) {
+            let s = strokeModifiers.translate(stroke, delta);
+            if(settings.normalize)
+                s = strokeModifiers.scale(s, new Point(GLYPH_SIZE / 2, GLYPH_SIZE / 2), scale);
+            s.draw(ctx);
+        }
     }
 
     // let ending_stroke = randInt(0, 3);
@@ -465,11 +600,12 @@ function gen()
 {
     Math.seedrandom(settings.seed);
     gaussRandSeed = randInt(0, 65536);
+    preGen();
     for (const canvas of $canvases) {
         let ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineCap = "round";
-        ctx.lineWidth = settings.lineWidth * LINE_WIDTH_SIZE / 100.0;
+        ctx.lineWidth = settings.lineWidth;
         genGlyph(ctx);
         // genGlyphLines(ctx);
         // genGlyphBezierCurve(ctx);

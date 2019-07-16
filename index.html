@@ -107,33 +107,12 @@
       <!-- Parameters (see bootstrap forms) -->
       <div class="col-md-4 col-12" id="params-sidebar">
         <h3>Parameters</h3>
-        <div class="form-group">
-          <label for="seed-input">Seed</label>
+        <label for="seed-input">Seed</label>
+        <div class="input-group mb-3">
           <input type="text" class="form-control" id="seed-input">
-        </div>
-        <div class="form-group">
-          <label for="line-length">Line Length</label>
-          <input type="range" class="form-control-range" id="line-length" min="1" max="100" value="10">
-        </div>
-        <div class="form-group">
-          <label for="circle-arc-angle">Circle Arc Angle</label>
-          <input type="range" class="form-control-range" id="circle-arc-angle" min="1" max="180" value="180"> <!-- Changed min value to 1 (previously 0) -->
-        </div>
-        <div class="form-group">
-          <label for="curves-input">Curves</label>
-          <input type="range" class="form-control-range" id="curves-input" min="1" max="100" value="10">
-        </div>
-        <div class="form-group">
-          <label for="lines-input">Lines</label>
-          <input type="range" class="form-control-range" id="lines-input" min="1" max="100" value="10">
-        </div>
-        <div class="form-group">
-          <label for="mid-x-input">Mid x weight</label>
-          <input type="range" class="form-control-range" id="mid-x-input" min="-100" max="100" value="0">
-        </div>
-        <div class="form-group">
-          <label for="mid-y-input">Mid y weight</label>
-          <input type="range" class="form-control-range" id="mid-y-input" min="-100" max="100" value="0">
+          <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="button" id="randomize-btn">Randomize</button>
+          </div>
         </div>
       </div>
     </div>
