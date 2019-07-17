@@ -1,7 +1,14 @@
+body {
+    background: #f9f9f9;
+}
+
 .jumbotron {
     margin-bottom: 0;
 }
 
+#glyphs {
+    margin-bottom: 5px;
+}
 .glyph {
     padding: 0;
     margin: 5px;
@@ -39,4 +46,8 @@ label {
 span.slider-value {
     float: right;
     color: #6c757d;
+}
+
+h1 > small {
+    font-size: 1.5rem;
 }

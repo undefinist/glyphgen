@@ -1,10 +1,8 @@
-const GLYPH_SIZE       = 256;
-const LINES_SIZE       = 4.0;
-const CURVES_SIZE      = 6.0;
-const LINE_WIDTH_SIZE  = 10.0;
-const LINE_LENGTH_SIZE = 256.0;
-const MID_POINT_X_SIZE = 100.0;
-const MID_POINT_Y_SIZE = 100.0;
+const GLYPHGEN_VER = "1.0";
+const GLYPH_SIZE = 256;
+
+$("h1").append(` <small class="text-muted">v${GLYPHGEN_VER}</small>`);
+
 
 var settings = {
 
@@ -41,10 +39,11 @@ var settings = {
         }
     },
 
-    addRange: function(name, label, min, max, step, defaultValue) {
+    addRange: function(name, label, tooltip, min, max, step, defaultValue) {
         let id = name.replace(/\s/g, "-");
+        let tooltipAttr = tooltip ? `data-toggle="tooltip" data-placement="right" title="${tooltip}"` : "";
         this.$params.append(
-            `<label for="${id}">${label}</label>` +
+            `<label for="${id}" ${tooltipAttr}>${label}</label>` +
             `<span class="slider-value" id="${id}-val">${defaultValue}</span>` +
             '<div class="input-group mb-3">' +
                 `<input type="range" class="custom-range" id="${id}" min="${min}" max="${max}" step="${step}" value="${defaultValue}">` +
@@ -56,12 +55,13 @@ var settings = {
         });
         this[name] = defaultValue;
     },
-    addBool: function(name, label, defaultValue) {
+    addBool: function(name, label, tooltip, defaultValue) {
         let id = name.replace(/\s/g, "-");
+        let tooltipAttr = tooltip ? `data-toggle="tooltip" data-placement="right" title="${tooltip}"` : "";
         this.$params.append(
             '<div class="custom-control custom-switch mb-3">' +
                 `<input type="checkbox" class="custom-control-input" id="${id}" ${defaultValue ? "checked" : ""}>` +
-                `<label class="custom-control-label" for="${id}">${label}</label>` +
+                `<label class="custom-control-label" for="${id}" ${tooltipAttr}>${label}</label>` +
             "</div>");
         $("#" + id).on("input", function() {
             settings.saveSetting(name, this.checked);
@@ -80,8 +80,7 @@ var settings = {
     mid_y: 10
 };
 
-var lasPosX = 0;
-var lasPosY = 0;
+
 
 // init canvas widths and heights (easier to do from here)
 // this sizes are separate from the actual widths and heights in the browser
@@ -104,16 +103,20 @@ $("#randomize-btn").on("click", function() {
     gen();
 });
 
-settings.addBool("normalize", "Normalize Glyph", false);
-settings.addRange("lineWidth", "Line Width", 1, 32, 1, 8);
-settings.addRange("jagginess", "Jagginess", 0, 1, 0.1, 0.3);
-settings.addRange("angleVariance", "Angular Variance", 1, 10, 1, 3);
-settings.addRange("minStrokes", "Min Strokes (per part)", 1, 6, 1, 1);
-settings.addRange("maxStrokes", "Max Strokes (per part)", 1, 6, 1, 4);
-settings.addRange("minParts", "Min Parts (per glyph)", 1, 4, 1, 1);
-settings.addRange("maxParts", "Max Parts (per glyph)", 1, 4, 1, 1);
-settings.addRange("arcWeight", "Arc Weight", 0, 1, 0.1, 0.5);
+settings.addBool("normalize", "Normalize Glyph", "", false);
+settings.addBool("roundedLineCaps", "Rounded Line Caps", "", true);
+settings.addRange("lineWidth", "Line Width", "", 1, 32, 1, 8);
+settings.addRange("jagginess", "Jagginess", "How much straight lines to use?", 0, 1, 0.1, 0.3);
+settings.addRange("angleVariance", "Angular Variance", "How varied are the angles of each stroke?", 1, 10, 1, 3);
+settings.addRange("minStrokes", "Min Strokes (per part)", "", 1, 6, 1, 1);
+settings.addRange("maxStrokes", "Max Strokes (per part)", "", 1, 6, 1, 4);
+settings.addRange("minParts", "Min Parts (per glyph)", "", 1, 4, 1, 1);
+settings.addRange("maxParts", "Max Parts (per glyph)", "", 1, 4, 1, 1);
+settings.addRange("arcWeight", "Arc Weight", "Chance of using arcs instead of beziers", 0, 1, 0.1, 0.5);
 settings.load();
+$('[data-toggle="tooltip"]').tooltip();
+
+
 
 var random = {
     prerolledValues: [],
@@ -150,6 +153,7 @@ var random = {
 }
 
 
+
 function clamp(value, min, max)
 {
     return value < min ? min : (value > max ? max : value);
@@ -163,9 +167,8 @@ class Point {
         this.y = y;
     }
     static difference(p0, p1) { return new Point(p0.x - p1.x, p0.y - p1.y); }
+    get magnitude() { return Math.sqrt(this.x * this.x + this.y * this.y); }
 }
-
-
 
 class Stroke {
     constructor(points) {
@@ -231,8 +234,18 @@ class Arc extends Stroke {
                  max: new Point(this.points[0].x + this.r, this.points[0].y + this.r)};
     }
 }
-
-
+class Circle extends Arc {
+    constructor(points, r) {
+        super(points, r, Math.PI * 2, 0);
+    }
+    static get requiredPoints() { return 1; }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.points[0].x, this.points[0].y, this.r, this.s, this.s+this.a);
+        ctx.fill();
+    }
+    clone() { return new Circle(this.clonePoints(), this.r); }
+}
 
 var strokeModifiers = {
     translate: function(stroke, delta) {
@@ -298,11 +311,11 @@ var strokeModifiers = {
 
 
 
+// split canvas into 3x3 to determine what direction the next point can go
 function genNextPoint(p0) {
 
     const angleConstraint = 90 / settings.angleVariance;
 
-    // split canvas into 3x3 to determine what direction the next point can go
     let angleMin = 0;
     let angleMax = 0;
     let radiusMin = GLYPH_SIZE / 3;
@@ -373,7 +386,7 @@ function genNextPoint(p0) {
 
 
 
-function randStroke(point) {
+function genStroke(point) {
     if(random.number(0, 1) < settings.jagginess)
     {
         let points = [ point ];
@@ -446,8 +459,7 @@ function genPart()
     let p0 = new Point(x0, y0);
     let startPoints = [ p0 ];
 
-    for(let i = 0; i < settings.maxStrokes; ++i)
-    {
+    for(let i = 0; i < settings.maxStrokes; ++i) {
         if(random.int(0, settings.maxStrokes - settings.minStrokes) < i - settings.minStrokes + 1)
             break;
 
@@ -455,12 +467,48 @@ function genPart()
         if(strokes.length > 0 && random.number(0, 1) < 0.5)
             stroke = reuseStroke(p0, strokes[random.int(0, strokes.length - 1)]);
         if(stroke == null)
-            stroke = randStroke(p0);
+            stroke = genStroke(p0);
         
         strokes.push(stroke);
         startPoints.push(stroke.points[stroke.points.length - 1]);
 
         p0 = startPoints.splice(random.int(0, startPoints.length - 1), 1)[0];
+    }
+
+    // add decoration
+    if(Math.abs(random.gaussian()) > 0.5) {
+        let lastStroke = strokes[random.int(0, strokes.length - 1)];
+        let endTangent = Point.difference(
+            lastStroke.points[lastStroke.points.length - 1],
+            lastStroke.points[lastStroke.points.length - 2]);
+        endTangent.x /= endTangent.magnitude;
+        endTangent.y /= endTangent.magnitude;
+
+        const dist = Math.abs(random.gaussian()) * 8 + settings.lineWidth * 1.5;
+
+        let decorationPt = lastStroke.points[lastStroke.points.length - 1];
+        decorationPt = new Point(
+            decorationPt.x + endTangent.x * dist, decorationPt.y + endTangent.y * dist);
+
+        // circle
+        if(random.number() < 0.5) {
+            const r = Math.abs(random.gaussian()) * 8 + settings.lineWidth * 0.5;
+            strokes.push(new Circle([decorationPt], r));
+        }
+        else { // tick
+            const tickVariance = Math.max(settings.angleVariance, 2);
+            const angleConstraint = 90 / tickVariance;
+            let angles = [];
+            for(let i = 1; i < tickVariance; ++i) {
+                angles.push(90 - i * angleConstraint);
+            }
+
+            const r = random.int(12, 16);
+            let angle = angles[0, random.int(0, angles.length - 1)] * Math.PI / 180;
+            let end = new Point(
+                decorationPt.x + Math.cos(angle) * r, decorationPt.y + Math.sin(angle) * r);
+            strokes.push(new Line([decorationPt, end]));
+        }
     }
 
     return strokes;
@@ -521,75 +569,8 @@ function genGlyph(ctx)
        // genGlyphQuadraticCurve(ctx, last_point.x, last_point.y);
        // genGlyphLines(ctx, last_point.x, last_point.y);       
     // }
-
-    // ctx.beginPath();
-
-    // // change input to take in degrees from 0-180, thus we have to convert back to radians
-    // let rad = settings.angle * Math.PI / 180;
-    // let numCurves = CURVES_SIZE * settings.curves / 100.0;
-    // for (var i = 0; i < numCurves; ++i) {
-    //     let x0 = random.int(16, GLYPH_SIZE - 16);
-    //     let y0 = random.int(16, GLYPH_SIZE - 16);
-    //     //Save last known position
-    //     lasPosX = x0 + random.int(0, 6);
-    //     lasPosY = y0 + random.int(0, 6);
-    //     ctx.arc(x0, y0, random.int(4, 32), random.number(0, rad * 2), random.number(0, rad));   
-    // }  
-    // ctx.stroke();
 }
 
-// for drawing lines
-//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_shapes
-function genGlyphLines(ctx, x0, y0)
-{
-    ctx.beginPath();
-    //Use last known position to connect the line and arcs
-    let numLines = LINES_SIZE * settings.lines / 100.0;
-      //Implement something to let user decide how many lines?
-    for (var i = 0; i < numLines; ++i)
-    {
-        //let x0 = lasPosX;//random.int(16, GLYPH_SIZE - 16);
-        //let y0 = lasPosY;//random.int(16, GLYPH_SIZE - 16);
-        // move to a random coordinate on the box
-        ctx.moveTo(x0, y0);
-        //Get a random direction
-        let ranRadY = Math.sin(random.number(0.0, Math.PI));
-        let ranRadX = Math.cos(random.number(0.0, Math.PI));
-        let mag = settings.lineLength * LINE_LENGTH_SIZE / 100.0;
-        lasPosX = clamp(x0 + ranRadX * mag, 0, GLYPH_SIZE);
-        lasPosY = clamp(y0 + ranRadY * mag, 0, GLYPH_SIZE);
-        // draw a line from moveTo to another random point
-        //ctx.lineTo(random.int(x0+ 16, GLYPH_SIZE - 16), random.int(16 + y0, GLYPH_SIZE - 16));
-        //Draw line to <x0, y0> + <ranRadX, ranRadY> * lineLength
-        ctx.lineTo(lasPosX, lasPosY);
-    }
-    ctx.closePath();
-    ctx.stroke();
-}
-
-function genGlyphQuadraticCurve(ctx, x0, y0)
-{
-    ctx.beginPath();
-    
-    // move to a random coordinate on the box
-    //let x0 = random.int(16, GLYPH_SIZE - 16);
-    //let y0 = random.int(16, GLYPH_SIZE - 16);
-    ctx.moveTo(x0, y0);
-    
-    // end point
-    let x_end = random.int(10, GLYPH_SIZE - 10);
-    let y_end = random.int(10, GLYPH_SIZE - 10);
-    
-    //control point 1
-    let cpx = Math.abs(x_end - x0) / 2.0 + MID_POINT_X_SIZE * settings.mid_x / 100.0;
-    let cpy = Math.abs(y_end - y0) / 2.0 + MID_POINT_Y_SIZE * settings.mid_y / 100.0;
-
-    //========================================
-    // LOOKS WRONG SO NEED TO MODIFY IF WE WANT TO USE
-    //========================================
-    ctx.quadraticCurveTo(cpx, cpy, x_end, y_end);
-    ctx.stroke();
-}
 
 function gen()
 {
@@ -597,7 +578,8 @@ function gen()
     for (const canvas of $canvases) {
         let ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.lineCap = "round";
+        ctx.lineCap = settings.roundedLineCaps ? "round" : "square";
+        ctx.lineJoin = "round";
         ctx.lineWidth = settings.lineWidth;
         genGlyph(ctx);
     }
