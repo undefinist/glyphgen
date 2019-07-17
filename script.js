@@ -478,9 +478,15 @@ function genPart()
     // add decoration
     if(Math.abs(random.gaussian()) > 0.5) {
         let lastStroke = strokes[random.int(0, strokes.length - 1)];
-        let endTangent = Point.difference(
-            lastStroke.points[lastStroke.points.length - 1],
-            lastStroke.points[lastStroke.points.length - 2]);
+        let endTangent;
+        if(lastStroke.points.length > 1) {
+            endTangent = Point.difference(
+                lastStroke.points[lastStroke.points.length - 1],
+                lastStroke.points[lastStroke.points.length - 2]);
+        }
+        else {
+            endTangent = new Point(Math.cos(lastStroke.s), Math.sin(lastStroke.s));
+        }
         endTangent.x /= endTangent.magnitude;
         endTangent.y /= endTangent.magnitude;
 
